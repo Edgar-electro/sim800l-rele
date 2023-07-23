@@ -2,15 +2,19 @@
 #include <AltSoftSerial.h>
 #include <TinyGPS++.h>
 #include <SIM800L.h>
-
+#include <TimerOne.h>
 TinyGPSPlus gps;
 
 SIM800L sim800l(2, 3); // Rx, Tx for GSM module
 
 #define LED_PIN 7
+
+unsigned long previousMillis = 0;   // Переменная для хранения времени последнего вызова функции
+const unsigned long interval = 1800000;
+
+
 double latitude, longitude;
-String response;
-int lastStringLength = response.length();
+
 String getlocation  ;
 
 const String PHONE = "+33769888360";
@@ -31,8 +35,8 @@ void handleSMS(String number, String message) {
       String text = (STATE_LEDPIN) ? "ON" : "OFF";
       sim800l.sendSMS(number, "STATUS IS " + text);
     } else if (message == "location") {
-      
-      sim800l.sendSMS(number, getlocation);
+      String text = "YOUR LOCATION";
+      sim800l.sendSMS(number, getlocation + text);
     }
   }
 }
@@ -58,19 +62,29 @@ void setup() {
   sim800l.begin(9600);
   sim800l.setSMSCallback(handleSMS);
   sim800l.setCallCallback(handleCall);
+  
 }
 
 void loop() {
   GPS();
   
   sim800l.listen();
-delay(1000);
 
 
 
-
+ unsigned long currentMillis = millis();
+if (currentMillis - previousMillis >= interval) {
+    // Сохраняем текущее время как время последнего вызова функции
+    previousMillis = currentMillis;
+    
+    // Вызываем вашу функцию, которую нужно выполнить каждую минуту
+    AUTOSENDLOCAL(); // Замените yourFunction() на имя вашей функции
+  }
 }
 
+void AUTOSENDLOCAL(){
+sim800l.sendSMS(PHONE, getlocation);
+ } 
 void GPS(){
 if (Serial.available()) {
     gps.encode(Serial.read()); 
