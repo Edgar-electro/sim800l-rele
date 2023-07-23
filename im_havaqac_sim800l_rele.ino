@@ -4,10 +4,15 @@
 #include <SIM800L.h>
 
 TinyGPSPlus gps;
-SoftwareSerial gpsSerial(8, 9); // Rx, Tx for GPS module
+
 SIM800L sim800l(2, 3); // Rx, Tx for GSM module
 
 #define LED_PIN 7
+double latitude, longitude;
+String response;
+int lastStringLength = response.length();
+String getlocation  ;
+
 const String PHONE = "+33769888360";
 boolean STATE_LEDPIN = 0;
 
@@ -25,10 +30,9 @@ void handleSMS(String number, String message) {
     } else if (message == "status") {
       String text = (STATE_LEDPIN) ? "ON" : "OFF";
       sim800l.sendSMS(number, "STATUS IS " + text);
-    } else if (message == "Get Location") {
-      String location = getLocation();
-      String googleMapsLink = getGoogleMapsLink(location);
-      sim800l.sendSMS(number, googleMapsLink);
+    } else if (message == "location") {
+      
+      sim800l.sendSMS(number, getlocation);
     }
   }
 }
@@ -40,40 +44,43 @@ void handleCall(String number) {
     digitalWrite(LED_PIN, !flag);
     delay(500);
     String text = (flag) ? "ON" : "OFF";
-    sim800l.sendSMS(number, "LED STAT " + text);
+    sim800l.sendSMS("0769888360", "LED STAT " + text);
   } else {
     Serial.println("Unkown phone number.");
   }
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(LED_PIN, OUTPUT);
   digitalWrite(LED_PIN, HIGH);
-  gpsSerial.begin(9600);
+  
   sim800l.begin(9600);
   sim800l.setSMSCallback(handleSMS);
   sim800l.setCallCallback(handleCall);
 }
 
 void loop() {
+  GPS();
+  
   sim800l.listen();
+delay(1000);
+
+
+
+
 }
 
-String getLocation() {
-  while (gpsSerial.available() > 0) {
-    if (gps.encode(gpsSerial.read())) {
-      if (gps.location.isValid()) {
-        float latitude = gps.location.lat();
-        float longitude = gps.location.lng();
-        String location = String(latitude, 6) + "," + String(longitude, 6);
-        return location;
+void GPS(){
+if (Serial.available()) {
+    gps.encode(Serial.read()); 
+    }  
+      if (gps.location.isUpdated()) {
+        latitude = gps.location.lat();
+        longitude = gps.location.lng();
+        getlocation = "https://www.google.com/maps?q=" + String(latitude, 6) + "," + String(longitude, 6) ;
+        Serial.println(getlocation);
       }
+   
+    
     }
-  }
-  return "Location not available";
-}
-
-String getGoogleMapsLink(String location) {
-  return "https://www.google.com/maps?q=" + location;
-}
