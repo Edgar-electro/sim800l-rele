@@ -92,7 +92,7 @@ if (Serial.available()) {
       if (gps.location.isUpdated()) {
         latitude = gps.location.lat();
         longitude = gps.location.lng();
-        getlocation = "https://www.google.com/maps?q=" + String(latitude, 6) + "," + String(longitude, 6) ;
+        getlocation = "http://maps.google.com/maps?q=loc:" + String(latitude, 6) + "," + String(longitude, 6) ;
         Serial.println(getlocation);
       }
    
