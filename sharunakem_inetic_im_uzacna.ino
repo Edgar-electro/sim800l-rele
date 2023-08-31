@@ -1,7 +1,5 @@
  
-//Prateek
-//wwww.prateeks.in
-//https://www.youtube.com/c/JustDoElectronics/videos
+
 
 #include <SoftwareSerial.h>
 #include <AltSoftSerial.h>
@@ -11,8 +9,8 @@
 const String PHONE = "+33769888360";
 
 
-#define RELAY_1 4
-#define scooterPin  6
+#define RELAY_1 5
+#define STATUS_PIN  6
 
 
 //GSM Module RX pin to Arduino 10
@@ -38,28 +36,35 @@ boolean lastScooterState = false;
 
 void setup() {
   delay(5000);
+  
   Serial.begin(115200);
   Serial.println("Arduino serial initialize");
-  delay(1000);
+  
   sim800.begin(9600);
   neogps.begin(9600);
   Serial.println("neogps sim800l Software serial initialize");
   delay(1000);
-
+  sim800.print("AT+CMGF=1\r"); //SMS text mode
+  delay(1000);
+  //delete all sms
+  sim800.println("AT+CMGD=1,4");
+  delay(1000);
+  sim800.println("AT+CMGDA= \"DEL ALL\"");
+  
+   
+  
+  delay(1000);
   pinMode(RELAY_1, OUTPUT);
   digitalWrite(RELAY_1, LOW);
-  pinMode(scooterPin, INPUT_PULLUP);
-  pinMode(scooterPin, LOW);
+  pinMode(STATUS_PIN, INPUT_PULLUP);
+  pinMode(STATUS_PIN, LOW);
   delay(1000);
   sms_status = "";
   sender_number = "";
   received_date = "";
   msg = "";
- delay(1000);
-  sim800.print("AT+CMGF=1\r"); //SMS text mode
-  delay(2000);
- sendSms("GPS Tracker is Online");
-
+  delay(1000);
+ sendSms("GPS Tracker is Online"); 
 }
 
 void loop() {
@@ -123,9 +128,9 @@ void extractSms(String buff) {
   buff.remove(0, index + 2);
 
   sender_number = buff.substring(0, 12);
-  buff.remove(0, 17);
+  buff.remove(0, 17);   // 0 17
   
-  received_date = buff.substring(0, 22);
+  received_date = buff.substring(0, 22);   //0 22
   buff.remove(0, buff.indexOf("\r"));
   buff.trim();
 
@@ -166,6 +171,16 @@ void doAction() {
 
     
   }
+  else if (msg == "delallsms") {
+    
+     Serial.println("all mesages delletid");
+     sim800.println ("AT+CMGDA=DEL ALL");
+     sendSms("all mesages delletid");
+    
+  }
+  
+  
+  
   else if (msg == "location") {
     sendSmsGPS("Location");
   }
@@ -177,7 +192,9 @@ void doAction() {
 }
 void deleteSms()
 {
+  
   sendATcommand("AT+CMGD=1,4", "OK", 2000);
+  sendATcommand ("AT+CMGDA=DEL ALL","OK", 2000);
   Serial.println("All SMS are deleted.");
   
 }
@@ -272,7 +289,7 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
 
 void DIGITALSTAT() {
 
-  boolean currentScooterState = digitalRead(scooterPin);
+  boolean currentScooterState = digitalRead(STATUS_PIN);
 
   if (currentScooterState != lastScooterState) {
     
