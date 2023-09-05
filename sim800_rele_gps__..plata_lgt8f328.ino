@@ -1,4 +1,4 @@
- 
+ //  by  edgar  
 
 
 #include <SoftwareSerial.h>
@@ -6,7 +6,7 @@
 #include <TinyGPS++.h>
 
 //sender phone number with country code
-const String PHONE = "+33769888360";
+const String PHONE = "+33769888370";
 
 
 #define RELAY_1 5
