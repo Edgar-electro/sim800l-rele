@@ -32,7 +32,7 @@ TinyGPSPlus gps;
 String sms_status, sender_number, received_date, msg;
 
 
-boolean STAT_RELAY_1 = false; //not completely implemented
+
 boolean lastScooterState = false; 
 int batteryPercentage = 0; 
 float voltage = 0;
@@ -160,20 +160,19 @@ void doAction() {
   if (msg == "lock") {
     digitalWrite(RELAY_1, HIGH);
     Serial.println("Scooter blocked");
-    STAT_RELAY_1 == true ;
+   
       sendSms("Scooter blocked");
     
   }
   else if (msg == "unlock") {
     digitalWrite(RELAY_1, LOW);
     Serial.println("Scooter Deblocked");
-    STAT_RELAY_1 == false;  
     sendSms("Scooter Deblocked");
     
   }  else if (msg == "status") {
-     Serial.println("Scooter Status");
-     String text = (STAT_RELAY_1 ) ? "ON" : "OFF";
+     String text = (lastScooterState ) ? "ON" : "OFF";
      sendSms("Scooter Alarm Is "+ text);
+     Serial.println("Scooter Status");
      }  
      else if (msg == "deletsms") {
         Serial.println("all mesages delletid");
