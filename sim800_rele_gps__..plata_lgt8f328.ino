@@ -1,4 +1,4 @@
- //  by  edgar  
+ 
 
 
 #include <SoftwareSerial.h>
@@ -6,16 +6,14 @@
 #include <TinyGPS++.h>
 
 //sender phone number with country code
-const String PHONE = "+33769888370";
+const String PHONE = "+33769888360";
 
 
 #define RELAY_1 5
 #define STATUS_PIN  6
 const int analogInputPin = A0;  // Входной пин для измерения напряжения
 const float maxVoltage = 42.0;  // Максимальное входное напряжение (вольты)
-const float minVoltage = 30.0;  // Минимальное входное напряжение (вольты)
-
-
+const float minVoltage = 30.0;
 
 //GSM Module RX pin to Arduino 10
 //GSM Module TX pin to Arduino 11
@@ -30,7 +28,6 @@ AltSoftSerial neogps;
 TinyGPSPlus gps;
 
 String sms_status, sender_number, received_date, msg;
-
 
 
 boolean lastScooterState = false; 
@@ -63,7 +60,6 @@ void setup() {
   digitalWrite(RELAY_1, LOW);
   pinMode(STATUS_PIN, INPUT_PULLUP);
   pinMode(STATUS_PIN, LOW);
-  analogRead(analogInputPin);
   delay(1000);
   sms_status = "";
   sender_number = "";
@@ -160,19 +156,20 @@ void doAction() {
   if (msg == "lock") {
     digitalWrite(RELAY_1, HIGH);
     Serial.println("Scooter blocked");
-   
+    
       sendSms("Scooter blocked");
     
   }
   else if (msg == "unlock") {
     digitalWrite(RELAY_1, LOW);
     Serial.println("Scooter Deblocked");
+     
     sendSms("Scooter Deblocked");
     
   }  else if (msg == "status") {
-     String text = (lastScooterState ) ? "ON" : "OFF";
-     sendSms("Scooter Alarm Is "+ text);
      Serial.println("Scooter Status");
+     String text = (lastScooterState) ? "ON" : "OFF";
+     sendSms("Scooter Alarm Is "+ text);
      }  
      else if (msg == "deletsms") {
         Serial.println("all mesages delletid");
@@ -183,27 +180,12 @@ void doAction() {
        else if (msg == "location") {
      sendSmsGPS("Location");
      }   
+       
       else if (msg == "batstat") {
  
     sendBatteryStatus(batteryPercentage,voltage);
 
 }
-
-       
-       
-       
-       
-       else if (msg == "bonjour trottinet") {
-     Serial.println("bonjour trottinet");
-     sendSms("Bonjour Edgar Cava?");
-     
-     }  else if (msg == "oui cava") {
-     Serial.println("oui cava");
-     sendSms("Quand tu seras libre, nous roulerons un peu.");
-     }  else if (msg == "ok") {
-     Serial.println("ok");
-     sendSms("Alors je t'attends Edgar");
-     }
   
  
   
@@ -217,8 +199,8 @@ void doAction() {
 void deleteSms()
 {
   
-  sendATcommand("AT+CMGD=1,4", "OK", 2000);
-  sendATcommand ("AT+CMGDA=DEL ALL","OK", 2000);
+  sendATcommand("AT+CMGD=1,4", "OK", 5000);
+  sendATcommand ("AT+CMGDA=DEL ALL","OK", 5000);
   Serial.println("All SMS are deleted.");
   
 }
@@ -326,9 +308,9 @@ void DIGITALSTAT() {
     }
     lastScooterState = currentScooterState;
   }
- }
+   }
 
-  void sendBatteryStatus(int batteryPercentage, float voltage) {
+   void sendBatteryStatus(int batteryPercentage, float voltage) {
   
   int sensorValue = analogRead(analogInputPin);
   voltage = (sensorValue / 1023.0) * maxVoltage; 
