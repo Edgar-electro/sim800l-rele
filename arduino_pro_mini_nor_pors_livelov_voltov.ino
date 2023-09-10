@@ -9,7 +9,7 @@
 const String PHONE = "+33769888360";
 
 #define RELAY_1 5
-
+#define ResetPin 6
 const int analogInputPin = A0;  
 const float maxVoltage = 42.0;  
 const float minVoltage = 30.0;
@@ -39,6 +39,8 @@ void setup() {
   delay(5000);
   pinMode(RELAY_1, OUTPUT);
   digitalWrite(RELAY_1, LOW);
+  pinMode(ResetPin, OUTPUT);
+  digitalWrite(ResetPin, HIGH);
   analogRead(analogInputPin);
   delay(1000);
   Serial.begin(115200);
@@ -318,6 +320,11 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
  }
 
  void resetNano() {
+ delay(1000);
+ digitalWrite(ResetPin, LOW);
+ delay(1000);
+ digitalWrite(ResetPin, HIGH);
+ delay(1000);
  sendSms("5 secund after restart"); 
  delay(5000);
   asm volatile ("  jmp 0");
