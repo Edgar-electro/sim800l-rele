@@ -5,14 +5,13 @@
 #include <AltSoftSerial.h>
 #include <TinyGPS++.h>
 
-//sender phone number with country code
+
 const String PHONE = "+33769888360";
 
-
 #define RELAY_1 5
-#define STATUS_PIN  6
-const int analogInputPin = A0;  // Входной пин для измерения напряжения
-const float maxVoltage = 42.0;  // Максимальное входное напряжение (вольты)
+#define ResetPin 6
+const int analogInputPin = A0;  
+const float maxVoltage = 42.0;  
 const float minVoltage = 30.0;
 
 //GSM Module RX pin to Arduino 10
@@ -33,34 +32,30 @@ String sms_status, sender_number, received_date, msg;
 boolean lastScooterState = false; 
 int batteryPercentage = 0; 
 float voltage = 0;
-
+unsigned long previousMillis1 = 0; 
+unsigned long previousMillis2 = 0;
+unsigned long previousMillis3 = 0;
+const unsigned long interval1 = 3600000; 
+const unsigned long interval2 = 3660000;
+const unsigned long interval3 = 3720000;
 
 
 void setup() {
   delay(5000);
-  
-  Serial.begin(115200);
-  Serial.println("Arduino serial initialize");
-  
-  sim800.begin(9600);
-  neogps.begin(9600);
-  Serial.println("neogps sim800l Software serial initialize");
-  delay(1000);
-  sim800.print("AT+CMGF=1\r"); //SMS text mode
-  delay(1000);
-  //delete all sms
-  sim800.println("AT+CMGD=1,4");
-  delay(1000);
-  sim800.println("AT+CMGDA= \"DEL ALL\"");
-  
-   
-  
-  delay(1000);
   pinMode(RELAY_1, OUTPUT);
   digitalWrite(RELAY_1, LOW);
-  pinMode(STATUS_PIN, INPUT_PULLUP);
-  pinMode(STATUS_PIN, LOW);
+  pinMode(ResetPin, OUTPUT);
+  digitalWrite(ResetPin, HIGH);
+  analogRead(analogInputPin);
   delay(1000);
+  Serial.begin(115200);
+  Serial.println("Arduino serial initialize");
+  delay(1000);
+  sim800.begin(9600);
+  neogps.begin(9600);
+  sim800.print("AT+CMGF=1\r"); //SMS text mode
+  delay(1000);
+  
   sms_status = "";
   sender_number = "";
   received_date = "";
@@ -77,26 +72,22 @@ void loop() {
   while (Serial.available())  {
     sim800.println(Serial.readString());
   }
-DIGITALSTAT();
-}
+   sendinterval();
+ }
 
 void parseData(String buff) {
   
-
-  
-  Serial.println(buff);
-
-  unsigned int len, index;
-  index = buff.indexOf("\r");
-  buff.remove(0, index + 2);
-  buff.trim();
-  if (buff != "OK") {
-    index = buff.indexOf(":");
-    String cmd = buff.substring(0, index);
-    cmd.trim();
-
-    buff.remove(0, index + 2);
-    Serial.println(buff);
+   Serial.println(buff);
+   unsigned int len, index;
+   index = buff.indexOf("\r");
+   buff.remove(0, index + 2);
+   buff.trim();
+   if (buff != "OK") {
+   index = buff.indexOf(":");
+   String cmd = buff.substring(0, index);
+   cmd.trim();
+   buff.remove(0, index + 2);
+   Serial.println(buff);
 
     if (cmd == "+CMTI") {
       //get newly arrived memory location and store it in temp
@@ -121,7 +112,9 @@ void parseData(String buff) {
   else {
   }
 }
-void extractSms(String buff) {
+ 
+ 
+ void extractSms(String buff) {
   unsigned int index;
   Serial.println(buff);
 
@@ -153,57 +146,55 @@ void extractSms(String buff) {
 }
 void doAction() {
   //case sensitive
-  if (msg == "lock") {
+   if (msg == "lock") {
     digitalWrite(RELAY_1, HIGH);
     Serial.println("Scooter blocked");
-    
+    lastScooterState = true;
       sendSms("Scooter blocked");
     
   }
-  else if (msg == "unlock") {
+  
+    else if (msg == "unlock") {
     digitalWrite(RELAY_1, LOW);
     Serial.println("Scooter Deblocked");
-     
+    lastScooterState = false;
     sendSms("Scooter Deblocked");
     
-  }  else if (msg == "status") {
+   }  
+     else if (msg == "status") {
      Serial.println("Scooter Status");
-     String text = (lastScooterState) ? "ON" : "OFF";
-     sendSms("Scooter Alarm Is "+ text);
-     }  
-     else if (msg == "deletsms") {
-        Serial.println("all mesages delletid");
-        sim800.println ("AT+CMGDA=DEL ALL");
-        sendSms("all mesages delletid");
-    
-     }  
+     String text = (lastScooterState) ? "blocked" : "deblocked";
+     sendSms("Scooter Is "+ text);
+   }  
+     
        else if (msg == "location") {
      sendSmsGPS("Location");
-     }   
+    }   
        
+      else if (msg == "gsmlivel") {
+     checkSignalAndSendSMS();
+    } 
       else if (msg == "batstat") {
- 
-    sendBatteryStatus(batteryPercentage,voltage);
-
-}
+      sendBatteryStatus();
+    }
   
- 
-  
+      else if (msg == "restart") {
+    resetNano();
+  }
   
   
   sms_status = "";
   sender_number = "";
   received_date = "";
   msg = "";
-}
+ }
 void deleteSms()
-{
+ {
   
   sendATcommand("AT+CMGD=1,4", "OK", 5000);
   sendATcommand ("AT+CMGDA=DEL ALL","OK", 5000);
   Serial.println("All SMS are deleted.");
-  
-}
+ }
 
 void sendSmsGPS(String text)
 {
@@ -272,8 +263,6 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
   {
     sim800.println(ATcommand);    // Send the AT command
   }
-
-
   x = 0;
   previous = millis();
 
@@ -289,33 +278,13 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
       }
     }
   } while ((answer == 0) && ((millis() - previous) < timeout));   // Waits for the asnwer with time out
-
   return answer;
 }
 
-void DIGITALSTAT() {
-
-  boolean currentScooterState = digitalRead(STATUS_PIN);
-
-  if (currentScooterState != lastScooterState) {
-    
-    if (currentScooterState == LOW) {
-      delay(1000);
-      sendSms("Scooter is ON");
-    } else {
-     delay(1000);
-     sendSms("Scooter is OFF");
-    }
-    lastScooterState = currentScooterState;
-  }
-   }
-
-   void sendBatteryStatus(int batteryPercentage, float voltage) {
-  
+  void sendBatteryStatus() {
   int sensorValue = analogRead(analogInputPin);
-  voltage = (sensorValue / 1023.0) * maxVoltage; 
-  batteryPercentage = map(voltage,minVoltage, maxVoltage,0 ,100) ;
-  
+   voltage = (sensorValue / 1023.0) * maxVoltage;
+   batteryPercentage = map(voltage, minVoltage, maxVoltage, 0, 100);
   String text = "Battery Percentage: " + String(batteryPercentage) + "%, Voltage: " + String(voltage) + "V";
   sim800.print("AT+CMGF=1\r");
   delay(1000);
@@ -331,5 +300,59 @@ void DIGITALSTAT() {
   Serial.print("%, Voltage: ");
   Serial.print(voltage);
   Serial.println("V");
+ }
 
-}
+ void checkSignalAndSendSMS() {
+  
+  sim800.println("AT+CSQ");
+  delay(1000); 
+  String signalResponse = "";
+  while (sim800.available()) {
+    signalResponse += sim800.readString();
+  }
+  sim800.print("AT+CMGF=1\r");
+  delay(1000);
+  sim800.print("AT+CMGS=\"" + PHONE + "\"\r");
+  delay(1000);
+  sim800.print("Signal Strength: " + signalResponse);
+  delay(100);
+  sim800.write(0x1A); // Отправить SMS
+  delay(1000);
+  Serial.println("Signal Strength sent via SMS: " + signalResponse);
+ 
+ }
+
+ void resetNano() {
+ delay(1000);
+ sendSms("5 secund after restart"); 
+ delay(6000);
+ digitalWrite(ResetPin, LOW);
+ delay(1000);
+ digitalWrite(ResetPin, HIGH);
+ delay(8000);
+ asm volatile ("  jmp 0");
+ }
+
+
+
+ void sendinterval() {
+ 
+ unsigned long currentMillis = millis();
+ 
+ 
+ // Отправка первого SMS
+  if (currentMillis - previousMillis1 >= interval1) {
+    sendSmsGPS("Location");
+    previousMillis1 = currentMillis; 
+  }
+
+  // Отправка второго SMS
+  if (currentMillis - previousMillis2 >= interval2) {
+    checkSignalAndSendSMS();
+    previousMillis2 = currentMillis; 
+  }
+  if (currentMillis - previousMillis3 >= interval3) {
+    resetNano();
+    previousMillis3 = currentMillis; 
+  }
+  }
