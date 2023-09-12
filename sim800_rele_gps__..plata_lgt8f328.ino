@@ -32,13 +32,14 @@ String sms_status, sender_number, received_date, msg;
 boolean lastScooterState = false; 
 int batteryPercentage = 0; 
 float voltage = 0;
+unsigned long previousGSMCheckMillis = 0;
 unsigned long previousMillis1 = 0; 
 unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
 const unsigned long interval1 = 3600000; 
 const unsigned long interval2 = 3660000;
 const unsigned long interval3 = 3720000;
-
+const unsigned long gsmCheckInterval = 30000;
 
 void setup() {
   delay(5000);
@@ -333,6 +334,22 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
  asm volatile ("  jmp 0");
  }
 
+bool checkGSMModuleResponse() {
+  sim800.println("AT");
+  delay(1000); // Даем время GSM-модулю ответить
+  Serial.println("Sent AT command to GSM module.");
+  while (sim800.available()) {
+    String response = sim800.readString();
+    Serial.println("Response from GSM module: " + response);
+    if (response.indexOf("OK") != -1) {
+      Serial.println("GSM module responded with OK.");
+      return true;
+    }
+  }
+
+ Serial.println("GSM module did not respond correctly.");
+  return false;
+}
 
 
  void sendinterval() {
@@ -355,4 +372,11 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
     resetNano();
     previousMillis3 = currentMillis; 
   }
+ if (currentMillis - previousGSMCheckMillis >= gsmCheckInterval) {
+    previousGSMCheckMillis = currentMillis;
+
+    if (!checkGSMModuleResponse()) {
+      resetNano();
+    }
+   }
   }
