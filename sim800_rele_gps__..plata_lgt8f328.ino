@@ -11,8 +11,20 @@ const String PHONE = "+33769888360";
 #define RELAY_1 5
 #define ResetPin 6
 const int analogInputPin = A0;  
-const float maxVoltage = 42.0;  
+const float maxVoltage = 42.00;  
 const float minVoltage = 30.0;
+
+////////////////////////////////
+float realVoltage = 41.00;     // Реальное напряжение, которое вы измерили (в вольтах)
+float measuredVoltage = 39.90; // Измеренное напряжение, которое Arduino показало (в вольтах)
+float correctionFactor;        // Коэффициент коррекции
+float correctedVoltage;        // Скорректированное напряжение (в вольтах)
+int batteryPercentage;         // Процент заряда батареи
+long voltage = 0.0;
+float VOLTtotal = 0.0;
+
+
+
 
 //GSM Module RX pin to Arduino 10
 //GSM Module TX pin to Arduino 11
@@ -30,16 +42,15 @@ String sms_status, sender_number, received_date, msg;
 
 
 boolean lastScooterState = false; 
-int batteryPercentage = 0; 
-float voltage = 0;
+
 unsigned long previousGSMCheckMillis = 0;
 unsigned long previousMillis1 = 0; 
 unsigned long previousMillis2 = 0;
 unsigned long previousMillis3 = 0;
-const unsigned long interval1 = 3600000; 
-const unsigned long interval2 = 3660000;
-const unsigned long interval3 = 3720000;
-const unsigned long gsmCheckInterval = 30000;
+const unsigned long interval1 = 7200000; 
+const unsigned long interval2 = 14400000;
+const unsigned long interval3 = 21600000;
+const unsigned long gsmCheckInterval = 180000;
 
 void setup() {
   delay(5000);
@@ -283,10 +294,18 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
 }
 
   void sendBatteryStatus() {
-  int sensorValue = analogRead(analogInputPin);
-   voltage = (sensorValue / 1023.0) * maxVoltage;
-   batteryPercentage = map(voltage, minVoltage, maxVoltage, 0, 100);
-  String text = "Battery Percentage: " + String(batteryPercentage) + "%, Voltage: " + String(voltage) + "V";
+  
+  for(int i=0;i<200;i++) {
+  int sensorValue  = analogRead(analogInputPin);
+  voltage += sensorValue ;
+  delay(1);
+  } 
+   voltage = voltage / 200 ;
+   VOLTtotal = (voltage / 1023.0) * 42.00;
+   correctionFactor = realVoltage / measuredVoltage;
+   correctedVoltage = VOLTtotal * correctionFactor;
+   batteryPercentage = map(correctedVoltage, minVoltage, maxVoltage, 0, 100);
+  String text = "Battery Percentage: " + String(batteryPercentage) + "%, Voltage: " + String(correctedVoltage) + "V";
   sim800.print("AT+CMGF=1\r");
   delay(1000);
   sim800.print("AT+CMGS=\"" + PHONE + "\"\r");
@@ -299,7 +318,7 @@ int8_t sendATcommand(char* ATcommand, char* expected_answer, unsigned int timeou
   Serial.print("Battery Percentage: ");
   Serial.print(batteryPercentage);
   Serial.print("%, Voltage: ");
-  Serial.print(voltage);
+  Serial.print(correctedVoltage);
   Serial.println("V");
  }
 
