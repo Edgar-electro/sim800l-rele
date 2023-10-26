@@ -1,1 +1,3 @@
-d2 d3 fsim rx tx ....serial rx tx vstaronni plati arduino nano gpsi hamar.. zangov anjatum miacnuma ,,namakov ..jamy mek uxarkuma kordinat....
+// voltmetrov analogi vra petqa lini 4.8 volt, karektirovken arvuma hetevyal kerp.
+ // testerov chapum em real voltajn  volty grum em  float realVoltage dimac,,,heto
+  //serial manitorov kam smsov nayum em prashivken inchqana cuyc talis etel grum em measuredVoltage
