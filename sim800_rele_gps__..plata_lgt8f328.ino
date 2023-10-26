@@ -1,4 +1,6 @@
- 
+// voltmetrov analogi vra petqa lini 4.8 volt, karektirovken arvuma hetevyal kerp.
+ // testerov chapum em real voltajn  volty grum em  float realVoltage dimac,,,heto
+  //serial manitorov kam smsov nayum em prashivken inchqana cuyc talis etel grum em measuredVoltage
 
 
 #include <SoftwareSerial.h>
@@ -11,7 +13,7 @@ const String PHONE = "+33769888360";
 #define RELAY_1 5
 #define ResetPin 6
 const int analogInputPin = A0;  
-const float maxVoltage = 42.00;  
+const float maxVoltage = 41.55;  
 const float minVoltage = 30.0;
 
 ////////////////////////////////
@@ -43,26 +45,24 @@ String sms_status, sender_number, received_date, msg;
 
 boolean lastScooterState = false; 
 
-unsigned long previousGSMCheckMillis = 0;
-unsigned long previousMillis1 = 0; 
-unsigned long previousMillis2 = 0;
-unsigned long previousMillis3 = 0;
-const unsigned long interval1 = 7200000; 
-const unsigned long interval2 = 14400000;
-const unsigned long interval3 = 21600000;
-const unsigned long gsmCheckInterval = 180000;
+unsigned long previousMillis = 0; // Переменная для отслеживания времени
+unsigned long interval = 1000; // Интервал в миллисекундах (1 секунда)
+unsigned long countdown = 10800; // Время в секундах (120 минут)
+
 
 void setup() {
   delay(5000);
+  Serial.begin(115200);
+  Serial.println("Arduino serial initialize");
+  delay(1000);
   pinMode(RELAY_1, OUTPUT);
   digitalWrite(RELAY_1, LOW);
   pinMode(ResetPin, OUTPUT);
   digitalWrite(ResetPin, HIGH);
+  pinMode(analogInputPin, INPUT);
   analogRead(analogInputPin);
   delay(1000);
-  Serial.begin(115200);
-  Serial.println("Arduino serial initialize");
-  delay(1000);
+  
   sim800.begin(9600);
   neogps.begin(9600);
   sim800.print("AT+CMGF=1\r"); //SMS text mode
@@ -374,28 +374,68 @@ bool checkGSMModuleResponse() {
  void sendinterval() {
  
  unsigned long currentMillis = millis();
+  
+  Serial.println(countdown);
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    
+  if (countdown > 0) {
+         countdown--;
+       } 
  
- 
- // Отправка первого SMS
-  if (currentMillis - previousMillis1 >= interval1) {
-    sendSmsGPS("Location");
-    previousMillis1 = currentMillis; 
+  if  (countdown  == 9450){
+      
+        sendSmsGPS("Location");
+ }
+
+  if  (countdown  == 8100){
+     
+        if (!checkGSMModuleResponse()) {
+        resetNano();
+    }
   }
 
-  // Отправка второго SMS
-  if (currentMillis - previousMillis2 >= interval2) {
-    checkSignalAndSendSMS();
-    previousMillis2 = currentMillis; 
+if  (countdown  == 6750){
+      
+        checkSignalAndSendSMS();
   }
-  if (currentMillis - previousMillis3 >= interval3) {
-    resetNano();
-    previousMillis3 = currentMillis; 
-  }
- if (currentMillis - previousGSMCheckMillis >= gsmCheckInterval) {
-    previousGSMCheckMillis = currentMillis;
 
-    if (!checkGSMModuleResponse()) {
+if  (countdown  == 5400){
+     
+        if (!checkGSMModuleResponse()) {
       resetNano();
     }
-   }
   }
+
+
+
+if  (countdown  == 4050){
+     
+        if (!checkGSMModuleResponse()) {
+      resetNano();
+    }
+  }
+
+if  (countdown  == 2700){
+     
+        if (!checkGSMModuleResponse()) {
+           resetNano();
+    }
+  }
+  
+
+ if  (countdown  == 1350){
+     
+      sendBatteryStatus();
+    }
+ 
+  
+  
+  if  (countdown  == 20){
+       
+       resetNano();
+     // countdown = 500;
+      }
+  
+  }
+ }
